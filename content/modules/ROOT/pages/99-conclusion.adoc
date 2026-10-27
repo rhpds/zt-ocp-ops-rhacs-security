@@ -1,11 +1,14 @@
-= Thank You for Completing the Workshop
+= Thank You for Completing the Lab
 
-**Thank you for attending the OpenShift Ops Day Roadshow.**
+**Thank you for completing the Red Hat Advanced Cluster Security lab.**
+
+You deployed a set of deliberately insecure applications, scheduled and ran a compliance scan against the Essential Eight benchmark, and worked through the policy violations RHACS surfaced. That's the core loop of container security operations: find what's running, measure it against a standard, and act on what fails.
 
 We hope you found the hands-on exercises valuable. If you have any further questions, please ask your instructor.
 
 == Additional Resources
 
+* link:https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_security_for_kubernetes[RHACS Documentation, window=blank]
+* link:https://www.redhat.com/en/technologies/cloud-computing/openshift/advanced-cluster-security-kubernetes[Red Hat Advanced Cluster Security, window=blank]
 * link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20[OpenShift Documentation, window=blank]
-* link:https://developers.redhat.com/learn/openshift[OpenShift Learning, window=blank]
 * link:https://www.redhat.com/en/services/training-and-certification[Red Hat Training & Certification, window=blank]
