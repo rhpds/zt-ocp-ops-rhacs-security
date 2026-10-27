@@ -1,94 +1,62 @@
-#!/bin/bash
-# inject-env-vars.sh
-# Injects lab environment variables into Antora configuration
-# Called by the showroom workload after deployment
-#
-# This is a single-module lab (Red Hat Advanced Cluster Security), so there are
-# no module_enable_* flags and no conditional nav - nav.adoc lists its three
-# pages unconditionally.
+#!/usr/bin/env bash
+# Inject the RHACS lab's runtime attributes and Showroom tabs after deployment.
+set -euo pipefail
 
-set -e
-
-REPO_DIR="/showroom/repo"
+REPO_DIR="${SHOWROOM_REPO_DIR:-/showroom/repo}"
+WWW_DIR="${SHOWROOM_WWW_DIR:-/showroom/www}"
 SITE_FILE="${REPO_DIR}/default-site.yml"
+UI_CONFIG="${REPO_DIR}/ui-config.yml"
 
-echo "=== Injecting lab environment variables ==="
-echo "Working directory: ${REPO_DIR}"
-
-# Check if default-site.yml exists
-if [ ! -f "$SITE_FILE" ]; then
-    echo "ERROR: ${SITE_FILE} not found"
+if [[ ! -f "$SITE_FILE" ]]; then
+    echo "ERROR: ${SITE_FILE} not found" >&2
     exit 1
 fi
+: "${ROUTE_SUBDOMAIN:?ROUTE_SUBDOMAIN must be set for the lab console URLs}"
+: "${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set for the lab credentials}"
 
-ATTRS=""
+CONSOLE_URL="${MASTER_URL:-https://console-openshift-console.${ROUTE_SUBDOMAIN}}"
+RHACS_URL="${RHACS_URL:-https://central-stackrox.${ROUTE_SUBDOMAIN}}"
 
-# TOC depth - only show main sections
-ATTRS="${ATTRS}    toclevels: 2"$'\n'
+# Escape single quotes so passwords and URLs remain valid YAML scalar values.
+yaml_string() {
+    local value="$1"
+    local quote="'"
+    if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+        echo "ERROR: Lab configuration values must be single-line strings" >&2
+        return 1
+    fi
+    value="${value//${quote}/${quote}${quote}}"
+    printf "'%s'" "$value"
+}
 
-# Standard lab variables
-ATTRS="${ATTRS}    api_url: '${API_URL:-}'"$'\n'
-ATTRS="${ATTRS}    master_url: '${MASTER_URL:-}'"$'\n'
-ATTRS="${ATTRS}    admin_password: '${ADMIN_PASSWORD:-}'"$'\n'
-ATTRS="${ATTRS}    ssh_username: '${SSH_USERNAME:-}'"$'\n'
-ATTRS="${ATTRS}    ssh_password: '${SSH_PASSWORD:-}'"$'\n'
-ATTRS="${ATTRS}    bastion_fqdn: '${BASTION_FQDN:-}'"$'\n'
-ATTRS="${ATTRS}    guid: '${GUID:-}'"$'\n'
-ATTRS="${ATTRS}    route_subdomain: '${ROUTE_SUBDOMAIN:-}'"$'\n'
-ATTRS="${ATTRS}    environment: '${ENVIRONMENT:-Amazon Web Services}'"$'\n'
-# Aliases - common alternate names content authors may use
-ATTRS="${ATTRS}    bastion_ssh_user: '${SSH_USERNAME:-}'"$'\n'
-ATTRS="${ATTRS}    bastion_ssh_password: '${SSH_PASSWORD:-}'"$'\n'
-ATTRS="${ATTRS}    bastion_public_hostname: '${BASTION_FQDN:-}'"$'\n'
-ATTRS="${ATTRS}    openshift_cluster_console_url: '${MASTER_URL:-}'"$'\n'
-ATTRS="${ATTRS}    openshift_api_server_url: '${API_URL:-}'"$'\n'
-ATTRS="${ATTRS}    openshift_cluster_admin_password: '${ADMIN_PASSWORD:-}'"$'\n'
-ATTRS="${ATTRS}    openshift_cluster_admin_username: 'admin'"$'\n'
-# Service URLs - derived from ROUTE_SUBDOMAIN
-ATTRS="${ATTRS}    console_url: 'https://console-openshift-console.${ROUTE_SUBDOMAIN:-}'"$'\n'
-ATTRS="${ATTRS}    rhacs_url: 'https://central-stackrox.${ROUTE_SUBDOMAIN:-}'"$'\n'
-ATTRS="${ATTRS}    rhacs_admin_username: 'admin'"$'\n'
-ATTRS="${ATTRS}    rhacs_admin_password: '${ADMIN_PASSWORD:-}'"$'\n'
-ATTRS="${ATTRS}    acs_route: 'https://central-stackrox.${ROUTE_SUBDOMAIN:-}'"$'\n'
-ATTRS="${ATTRS}    acs_portal_username: 'admin'"$'\n'
-ATTRS="${ATTRS}    acs_portal_password: '${ADMIN_PASSWORD:-}'"$'\n'
+attribute() {
+    printf '    %s: ' "$1"
+    yaml_string "$2"
+    printf '\n'
+}
 
-echo "Attributes to inject:"
-echo "$ATTRS"
+SITE_TMP="$(mktemp "${SITE_FILE}.XXXXXX")"
+UI_TMP="$(mktemp "${UI_CONFIG}.XXXXXX")"
+trap 'rm -f "$SITE_TMP" "$UI_TMP"' EXIT
 
-# Check if asciidoc section already exists
-if grep -q "^asciidoc:" "$SITE_FILE"; then
-    echo "asciidoc section already exists, replacing attributes..."
-    # Remove existing asciidoc section and add new one
-    cp "$SITE_FILE" "${SITE_FILE}.bak"
+# Replace the runtime AsciiDoc section, retaining the rest of the playbook.
+awk '
+    /^asciidoc:/ { in_asciidoc=1; next }
+    in_asciidoc && /^[[:alnum:]_-]+:/ { in_asciidoc=0 }
+    !in_asciidoc { print }
+' "$SITE_FILE" > "$SITE_TMP"
 
-    # Remove old asciidoc section (everything from "asciidoc:" to next top-level key or EOF)
-    awk '
-        /^asciidoc:/ { in_asciidoc=1; next }
-        in_asciidoc && /^[a-z]/ { in_asciidoc=0 }
-        !in_asciidoc { print }
-    ' "${SITE_FILE}.bak" > "$SITE_FILE"
-fi
+{
+    printf 'asciidoc:\n  attributes:\n    toclevels: 2\n'
+    attribute openshift_cluster_console_url "$CONSOLE_URL"
+    attribute openshift_cluster_admin_username "${ADMIN_USERNAME:-admin}"
+    attribute openshift_cluster_admin_password "$ADMIN_PASSWORD"
+    attribute rhacs_url "$RHACS_URL"
+    attribute rhacs_admin_username "${RHACS_ADMIN_USERNAME:-admin}"
+    attribute rhacs_admin_password "${RHACS_ADMIN_PASSWORD:-$ADMIN_PASSWORD}"
+} >> "$SITE_TMP"
 
-# Append asciidoc section with attributes
-echo "" >> "$SITE_FILE"
-echo "asciidoc:" >> "$SITE_FILE"
-echo "  attributes:" >> "$SITE_FILE"
-echo -n "$ATTRS" >> "$SITE_FILE"
-
-echo "=== Antora injection complete ==="
-
-# ==============================================================================
-# Generate ui-config.yml
-# OCP Console and Terminal are base workloads; RHACS is this lab's whole point,
-# so all three tabs are unconditional.
-# ==============================================================================
-echo "=== Generating ui-config.yml ==="
-
-UI_CONFIG="${REPO_DIR}/ui-config.yml"
-DOMAIN="${ROUTE_SUBDOMAIN:-}"
-
-cat > "$UI_CONFIG" <<UIEOF
+cat > "$UI_TMP" <<UIEOF
 ---
 type: showroom
 
@@ -105,19 +73,21 @@ antora:
 
 tabs:
   - name: OCP Console
-    url: 'https://console-openshift-console.${DOMAIN}'
+    url: $(yaml_string "$CONSOLE_URL")
 
   - name: Terminal
     path: /wetty
     port: 443
 
   - name: RHACS
-    url: 'https://central-stackrox.${DOMAIN}'
+    url: $(yaml_string "$RHACS_URL")
 UIEOF
 
-# Copy to served location
-cp "$UI_CONFIG" /showroom/www/ui-config.yml 2>/dev/null || true
+# Preserve permissions for the Showroom build and web server processes.
+cat "$SITE_TMP" > "$SITE_FILE"
+cat "$UI_TMP" > "$UI_CONFIG"
+if [[ -d "$WWW_DIR" ]]; then
+    cp "$UI_CONFIG" "${WWW_DIR}/ui-config.yml"
+fi
 
-echo "Generated ui-config.yml:"
-cat "$UI_CONFIG"
-echo "=== All injection complete ==="
+echo "RHACS lab attributes and Showroom tabs configured."

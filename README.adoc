@@ -17,8 +17,8 @@ the Advanced Cluster Security module only.
 | *link:content/modules/ROOT/pages/index.adoc[Setup & Overview]* (5-10 min)
 | Lab access, Showroom interface, CLI verification, RHACS readiness check
 
-| *link:content/modules/ROOT/pages/15-acs.adoc[Advanced Cluster Security]* (15-20 min)
-| Deploy deliberately insecure applications, configure compliance scan schedules, run Essential Eight (E8) scans, inspect policy violations
+| *link:content/modules/ROOT/pages/01-rhacs.adoc[Advanced Cluster Security]* (15-20 min)
+| Deploy insecure applications, run Essential Eight (E8) scans, enforce a runtime policy, investigate violations, and clean up
 
 | *link:content/modules/ROOT/pages/99-conclusion.adoc[Wrap Up]*
 | Summary and further reading
@@ -30,23 +30,42 @@ Navigation is a flat, unconditional list in link:content/modules/ROOT/nav.adoc[n
 == Cluster Requirements
 
 The lab assumes a cluster with RHACS already installed and Central reachable at
-`central-stackrox.<route_subdomain>`. The module clones
+`central-stackrox.<route_subdomain>`. It also requires:
+
+* A secured cluster named `production` in RHACS, with runtime enforcement enabled
+* The OpenShift Compliance Operator installed and integrated with RHACS
+* Policy as code enabled, including the `securitypolicies.config.stackrox.io` CRD
+* Cluster administrator access and a terminal with `oc`, `git`, `jq`, and `tmux`
+
+The module clones
 https://github.com/mfosterrox/demo-applications[mfosterrox/demo-applications] at runtime to deploy its
-insecure workloads (emojivoto, Apache Struts, DVWA, Log4Shell), so the lab environment needs outbound
-access to GitHub.
+insecure workloads (emojivoto, Apache Struts, DVWA, Log4Shell, and the patient portal), so the lab
+environment needs outbound access to GitHub and the workloads' image registries.
 
 == Runtime Configuration
 
 `.workshop/inject-env-vars.sh` is called by the showroom workload after deployment. It:
 
-* Injects cluster attributes (console URL, admin credentials, RHACS/ACS URLs) into `default-site.yml`
+* Injects the OpenShift and RHACS console URLs and credentials into `default-site.yml`
 * Generates `ui-config.yml` with three tabs: OCP Console, Terminal, and RHACS
+
+Required environment variables are `ROUTE_SUBDOMAIN` and `ADMIN_PASSWORD`.
+Optional overrides are `MASTER_URL`, `ADMIN_USERNAME`, `RHACS_URL`, `RHACS_ADMIN_USERNAME`, and
+`RHACS_ADMIN_PASSWORD`. Both usernames default to `admin`; RHACS uses `ADMIN_PASSWORD` unless
+overridden. Configuration values must be single-line strings.
+
+The script defaults to `/showroom/repo` and copies the tabs configuration to `/showroom/www` when
+that directory exists. `SHOWROOM_REPO_DIR` and `SHOWROOM_WWW_DIR` can override those paths for testing.
+
+`site.yml` builds the public preview into `www/`; `default-site.yml` is the runtime playbook and
+builds into `public/`. Both use the same theme and supplemental UI. Public previews use example
+URLs and credential labels from `content/antora.yml`; deployment injection supplies the real values.
 
 == Local Development
 
 === Using local-build scripts (Recommended)
 
-From the repo root, build and preview the lab with Podman:
+Install Node.js/npm and Podman, then build and preview the lab from the repo root:
 
 [source,sh]
 ----
@@ -71,20 +90,20 @@ Optional environment variables (see `local-build/_common.sh`):
 * `SHOWROOM_PORT` — host port (default `8080`)
 * `SHOWROOM_PULL=1` — pull the httpd image before starting
 * `SHOWROOM_SITE_YML` — alternate Antora playbook (default `site.yml`)
+* `SHOWROOM_WWW` — absolute build and preview directory (default `www/` in this repo)
+* `SHOWROOM_CONTAINER_NAME` — preview container name (default `zt-ocp-ops-rhacs-security-httpd`)
 
 === Using Antora CLI directly
 
 [source,sh]
 ----
 npm i -g @antora/cli@3.1 @antora/site-generator@3.1
-antora generate site.yml --stacktrace
+antora generate site.yml --stacktrace --log-failure-level=warn
 ----
 
 Output is generated in `./www/`.
 
-NOTE: Local builds log warnings about missing attributes such as
-`openshift_cluster_admin_username`. This is expected - those are injected at runtime by
-`.workshop/inject-env-vars.sh` and are not set in `site.yml`.
+Builds fail on warnings, including broken page or image references and missing attributes.
 
 == Theme
 
@@ -92,6 +111,14 @@ This lab uses a custom RHDP theme with click-to-execute functionality. Code bloc
 `role="execute"` send commands directly to the wetty terminal.
 
 * Theme bundle: https://github.com/dialvare/rhdp_showroom_theme (`v2.0.4-ops`)
+* Supplemental UI configuration follows https://docs.antora.org/antora/latest/playbook/ui-supplemental-files/[Antora's directory layout].
+
+== Authoring
+
+The `.claude/`, `.cursor/`, and `cursor-setup/` directories and their root-level guides are shared
+Showroom authoring tools. They are not included in the published lab.
+
+The old `15-acs.html` module URL redirects to `01-rhacs.html` through an Antora page alias.
 
 == Branches
 

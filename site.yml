@@ -1,7 +1,7 @@
 ---
 site:
   title: Red Hat Advanced Cluster Security
-  url: https://github.com/rhpds/zt-ocp-ops-rhacs-security
+  url: https://rhpds.github.io/zt-ocp-ops-rhacs-security
   start_page: rhacs-security::index.adoc
 
 content:
@@ -13,20 +13,10 @@ ui:
   bundle:
     url: https://github.com/dialvare/rhdp_showroom_theme/releases/download/v2.0.4-ops/ui-bundle.zip
     snapshot: true
-  supplemental_files:
-    - path: ./content/supplemental-ui
-    - path: ./content/lib
-    - path: .nojekyll
-    - path: ui.yml
-      contents: "static_files: [ .nojekyll ]"
+  supplemental_files: ./content/supplemental-ui
 
 runtime:
   cache_dir: ./.cache/antora
-
-antora:
-  extensions:
-    - require: ./content/lib/dev-mode.js
-      enabled: false
 
 output:
   dir: ./www

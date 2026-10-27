@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop httpd, rebuild openshift-days-ops-showroom, and serve again.
+# Stop httpd, rebuild zt-ocp-ops-rhacs-security, and serve again.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

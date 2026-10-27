@@ -2,5 +2,5 @@
 // Single-module lab - no catalog conditionals needed.
 
 * xref:index.adoc[Setup & Overview]
-* xref:15-acs.adoc[Advanced Cluster Security]
+* xref:01-rhacs.adoc[Advanced Cluster Security]
 * xref:99-conclusion.adoc[Wrap Up]

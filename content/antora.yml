@@ -7,12 +7,14 @@ nav:
 asciidoc:
   attributes:
     lab_name: "Red Hat Advanced Cluster Security"
-    release-version: main
     page-pagination: true
-    guid: my-guid
-    ssh_user: lab-user
-    ssh_password: ''
-    ssh_command: ''
+    # Preview values; the runtime playbook overrides these after deployment.
+    openshift_cluster_console_url: https://console-openshift-console.apps.example.com
+    openshift_cluster_admin_username: admin
+    openshift_cluster_admin_password: Supplied by your lab environment
+    rhacs_url: https://central-stackrox.apps.example.com
+    rhacs_admin_username: admin
+    rhacs_admin_password: Supplied by your lab environment
     page-links:
     - url: https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_security_for_kubernetes
       text: RHACS Docs

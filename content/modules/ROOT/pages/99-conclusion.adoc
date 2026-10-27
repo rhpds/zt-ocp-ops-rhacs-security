@@ -2,7 +2,7 @@
 
 **Thank you for completing the Red Hat Advanced Cluster Security lab.**
 
-You deployed a set of deliberately insecure applications, scheduled and ran a compliance scan against the Essential Eight benchmark, and worked through the policy violations RHACS surfaced. That's the core loop of container security operations: find what's running, measure it against a standard, and act on what fails.
+You deployed deliberately insecure applications, scheduled and ran a compliance scan against the Essential Eight benchmark, and enforced a runtime policy against package manager execution. You then inspected the resulting violation and cleaned up the lab changes.
 
 We hope you found the hands-on exercises valuable. If you have any further questions, please ask your instructor.
 
